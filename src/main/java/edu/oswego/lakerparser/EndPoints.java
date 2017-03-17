@@ -4,10 +4,10 @@ package edu.oswego.lakerparser;
 public class EndPoints {
 
     private static final String TERMS_FORMAT = "https://banner-xe-02.oswego.edu:8443/StudentRegistrationSSB" +
-            "/ssb/classSearch/getTerms?searchTerm=&offset=1&max=%d&_=1488498106844";
+            "/ssb/classSearch/queryTerms?searchTerm=&offset=1&max=%d&_=1488498106844";
 
     private static final String SUBJECTS_FORMAT = "https://banner-xe-02.oswego.edu:8443/StudentRegistrationSSB" +
-            "/ssb/classSearch/get_subject?searchTerm=&term=%d&offset=1&max=%d&_=1488498867997";
+            "/ssb/classSearch/get_subject?searchTerm=&term=%d&offset=%d&max=10&_=1488498867997";
 
     private static final String RESET = "https://banner-xe-02.oswego.edu:8443/StudentRegistrationSSB/ssb/classSearch/resetDataForm";
 
