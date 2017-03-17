@@ -6,12 +6,14 @@ import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 
 public class LakerScrapper {
@@ -23,7 +25,9 @@ public class LakerScrapper {
 
     private String termString;
     private int termCode;
+    private JsonArray terms = new JsonArray();
     private JsonArray subjects = new JsonArray();
+    private JsonArray courses = new JsonArray();
 
     private WebClient webClient;
     private HtmlPage currentPage;
@@ -40,33 +44,98 @@ public class LakerScrapper {
 
     }
 
-    public JsonArray queryTerms(int historyLength) throws IOException {
-        String uri = EndPoints.getTermsEndpoint(historyLength);
-        WebRequest request = new WebRequest(new URL(uri), HttpMethod.GET);
-
-        Page responsePage = webClient.getPage(request);
-        WebResponse response = responsePage.getWebResponse();
-        System.out.println(response.getContentAsString());
-        if (response.getContentType().equals("application/json")) {
-            JsonElement element = new JsonParser().parse(response.getContentAsString());
-            return element.getAsJsonArray();
-        } else {
-            throw new AssertionError("Unexpected content type:".concat(response.getContentType()));
+    public JsonArray getTerms() throws IOException {
+        if(terms.size() == 0) {
+            queryForTerms();
         }
+
+        return terms;
     }
 
-    public void setTerm(String termString, int termCode) throws URISyntaxException, IOException {
+    public JsonArray getCourses() throws IOException {
+        if(courses.size() == 0) {
+            queryForCourses();
+        }
+        return courses;
+    }
+
+    public JsonArray getSubjects() throws IOException {
+        if(subjects.size() == 0) {
+            queryForSubjects();
+        }
+        return subjects;
+    }
+
+    public void selectTerm(String termString, int termCode) throws URISyntaxException, IOException {
         this.termString = termString;
         this.termCode = termCode;
         queryForSubjects();
-        submitTerm();
+        submitTermForm();
     }
 
-    public JsonArray getCourses() {
-        return null;
+    private void queryForTerms() throws IOException {
+        WebResponse response = restRequest(EndPoints.getTermsEndpoint());
+        JsonArray element = new JsonParser().parse(response.getContentAsString()).getAsJsonArray();
+        terms.addAll(element);
     }
 
-    private void submitTerm() throws URISyntaxException, IOException {
+    private void queryForSubjects() throws IOException {
+        int page = 1;
+        while (true) {
+            WebResponse response = restRequest(EndPoints.getSubjectsEndpoint(termCode, page));
+//            System.out.println(response.getContentAsString());
+            JsonArray array = new JsonParser().parse(response.getContentAsString()).getAsJsonArray();
+            if (array != null && array.size() > 0) {
+                array.forEach(element -> {
+                    if (element != null) {
+                        subjects.add(element.getAsJsonObject());
+                    }
+                });
+            } else {
+                break;
+            }
+
+            page++;
+        }
+    }
+
+    private void queryForCourses() throws IOException {
+        JsonArray subs = getSubjects();
+        for (JsonElement temp : subs) {
+            JsonObject subj = temp.getAsJsonObject();
+            queryCourses(subj.get("code").getAsString());
+        }
+    }
+
+    private void queryCourses(String subject) throws IOException {
+        Map<Integer, JsonObject> coursesMap = new HashMap<>();
+        int page = 0;
+
+        while (true) {
+            resetForm();
+            WebResponse response = restRequest(EndPoints.getCoursesEndpoint(subject, termCode, page));
+
+            JsonObject output = new JsonParser().parse(response.getContentAsString()).getAsJsonObject();
+            JsonArray array = output != null && output.has("data") ? output.get("data").getAsJsonArray() : null;
+
+            if(array != null && array.size() > 0) {
+                array.forEach(element -> {
+                    JsonObject course = element.getAsJsonObject();
+                    int id = course.get("id").getAsInt();
+                    if(!coursesMap.containsKey(id)) {
+                        coursesMap.put(id, course);
+                    }
+                });
+            } else {
+                break;
+            }
+            page++;
+        }
+
+        coursesMap.values().forEach(this.courses::add);
+    }
+
+    private void submitTermForm() throws URISyntaxException, IOException {
         if (!webClient.getCurrentWindow().getEnclosedPage().getUrl().toURI().toString().contains(EndPoints.getSelectTermPage())) {
             System.out.println("Going back");
             currentPage = webClient.getPage(EndPoints.getSelectTermPage());
@@ -91,35 +160,31 @@ public class LakerScrapper {
 
     }
 
-    private void queryForSubjects() throws IOException {
-        int page = 1;
-        while (true) {
-            String endpoint = EndPoints.getSubjectsEndpoint(termCode, page);
-            System.out.println(endpoint);
-            WebRequest request = new WebRequest(new URL(endpoint), HttpMethod.GET);
-            Page responsePage = webClient.getPage(request);
-            WebResponse response = responsePage.getWebResponse();
-            if (response.getContentType().equals("application/json")) {
-                System.out.println(response.getContentAsString());
-                JsonArray array = new JsonParser().parse(response.getContentAsString()).getAsJsonArray();
-                if (array != null && array.size() > 0) {
-                    array.forEach(element -> {
-                        if(element != null) {
-                            subjects.add(element.getAsJsonObject());
-                        }
-                    });
-                } else {
-                    break;
-                }
-            } else {
-                throw new AssertionError("Wrong reponse type found");
+
+    private void resetForm() throws IOException {
+        makeRequest(EndPoints.getResetEndpoint());
+    }
+
+    private WebResponse restRequest(String endpoint) throws IOException {
+        Page page = makeRequest(endpoint);
+        if(page.getWebResponse() != null) {
+            if(!page.getWebResponse().getContentType().equals("application/json")) {
+                throw new AssertionError("Unexpected response type:".concat(page.getWebResponse().getContentType()));
             }
-            page++;
+            return page.getWebResponse();
+        }else {
+            throw new AssertionError("No response");
         }
     }
 
-    private void queryCourses() {
-
+    private Page makeRequest(String endpoint) throws IOException {
+        System.out.println(endpoint);
+        WebRequest request = new WebRequest(new URL(endpoint), HttpMethod.GET);
+        Page responsePage = webClient.getPage(request);
+        if(responsePage == null) {
+            throw new AssertionError("No page result");
+        }
+        return responsePage;
     }
 
 }

@@ -3,8 +3,8 @@ package edu.oswego.lakerparser;
 
 public class EndPoints {
 
-    private static final String TERMS_FORMAT = "https://banner-xe-02.oswego.edu:8443/StudentRegistrationSSB" +
-            "/ssb/classSearch/queryTerms?searchTerm=&offset=1&max=%d&_=1488498106844";
+    private static final String TERMS_FORMAT = "https://banner-xe-02.oswego.edu:8443/StudentRegistrationSSB/ssb/classSearch/getTerms" +
+            "?searchTerm=&offset=1&max=10&_=1489766437259";
 
     private static final String SUBJECTS_FORMAT = "https://banner-xe-02.oswego.edu:8443/StudentRegistrationSSB" +
             "/ssb/classSearch/get_subject?searchTerm=&term=%d&offset=%d&max=10&_=1488498867997";
@@ -19,11 +19,8 @@ public class EndPoints {
             "https://banner-xe-02.oswego.edu:8443/StudentRegistrationSSB/ssb/term/termSelection?mode=search";
 
 
-    public static String getTermsEndpoint(int length) {
-        if (length <= 0)
-            length = 1;
-
-        return String.format(TERMS_FORMAT, length);
+    public static String getTermsEndpoint() {
+        return TERMS_FORMAT;
     }
 
     public static String getSubjectsEndpoint(int termCode, int page) {
