@@ -24,8 +24,67 @@ public class CourseDataParser {
         parse();
     }
 
+    public static List<Course> loadParsed(JsonArray parsed) {
+        List<Course> out = new ArrayList<>();
+        parsed.forEach(temp -> {
+            JsonObject courseJson = temp.getAsJsonObject();
+
+            JsonElement nameElement = courseJson.get("name");
+            JsonElement crnElement = courseJson.get("crn");
+            JsonElement creditsElement = courseJson.get("credits");
+
+            JsonArray sectionsArray = courseJson.get("sections").getAsJsonArray();
+
+            Course course = new Course(nameElement.isJsonNull() ? null : nameElement.getAsString(),
+                    crnElement.getAsString(), creditsElement.getAsInt());
+
+            sectionsArray.forEach(sectionElement -> {
+                JsonObject sectionObj = sectionElement.getAsJsonObject();
+                JsonElement instElem = sectionObj.get("instructors");
+
+                JsonArray meetingsArray = sectionObj.get("meetings").getAsJsonArray();
+                List<Meeting> meetings = new ArrayList<>();
+                meetingsArray.forEach(meetingElem -> {
+                    JsonObject meetingObj = meetingElem.getAsJsonObject();
+
+                    JsonElement startElem = meetingObj.get("start");
+                    JsonElement endElem = meetingObj.get("end");
+                    JsonElement locationElem = meetingObj.get("location");
+
+                    Meeting meeting = new Meeting(
+                            startElem.isJsonNull() ? null : startElem.getAsString(),
+                            endElem.isJsonNull() ? null : endElem.getAsString(),
+                            locationElem.isJsonNull() ? null : locationElem.getAsString()
+                    );
+
+                    meeting.sunday = meetingObj.get("sunday").getAsBoolean();
+                    meeting.monday = meetingObj.get("monday").getAsBoolean();
+                    meeting.tuesday = meetingObj.get("tuesday").getAsBoolean();
+                    meeting.wednesday = meetingObj.get("wednesday").getAsBoolean();
+                    meeting.thursday = meetingObj.get("thursday").getAsBoolean();
+                    meeting.friday = meetingObj.get("friday").getAsBoolean();
+                    meeting.saturday = meetingObj.get("saturday").getAsBoolean();
+
+                    meetings.add(meeting);
+
+                });
+
+                Section section = new Section(instElem.isJsonNull() ? null : instElem.getAsString(), meetings);
+                course.addSection(section);
+            });
+
+        });
+        return out;
+    }
+
     public List<Course> getParsedCourses() {
         return parsedCourses;
+    }
+
+    public JsonArray getParsedCoursesAsJson() {
+        JsonArray array = new JsonArray();
+        getParsedCourses().forEach(course -> array.add(course.toJson()));
+        return array;
     }
 
     private void parse() {
@@ -62,7 +121,7 @@ public class CourseDataParser {
         String name = jsonObject.get("subjectCourse").getAsString();
         String crn = jsonObject.get("courseReferenceNumber").getAsString();
         JsonElement credits = jsonObject.get("creditHours");
-        return new Course(name, crn, credits.isJsonNull() ? 0 : credits.getAsInt());
+        return new Course(name, crn, credits.isJsonNull() ? 3 : credits.getAsInt());
     }
 
     private Section parseSection(JsonObject jsonObject) {
@@ -92,9 +151,16 @@ public class CourseDataParser {
             JsonElement building = meeting.get("building");
             JsonElement room = meeting.get("room");
 
-            String location = room.isJsonNull() ? building.isJsonNull() ? "null" : building.getAsString() :
-                    String.format("%s %s", !building.isJsonNull() ? building.getAsString() : "null",
-                            !room.isJsonNull() ? room.getAsString() : "null");
+            String location;
+            if (!building.isJsonNull()) {
+                if (room.isJsonNull()) {
+                    location = building.getAsString();
+                } else {
+                    location = String.format("%s %s", building.getAsString(), room.getAsString());
+                }
+            } else {
+                location = null;
+            }
 
             JsonElement start = meeting.get("beginTime");
             JsonElement end = meeting.get("endTime");
@@ -107,8 +173,8 @@ public class CourseDataParser {
             JsonElement friday = meeting.get("friday");
             JsonElement saturday = meeting.get("saturday");
 
-            Meeting temp = new Meeting(!start.isJsonNull() ? start.getAsString() : "null",
-                    !end.isJsonNull() ? end.getAsString() : "null", location);
+            Meeting temp = new Meeting(!start.isJsonNull() ? start.getAsString() : null,
+                    !end.isJsonNull() ? end.getAsString() : null, location);
 
             temp.sunday = !sunday.isJsonNull() && sunday.getAsBoolean();
             temp.monday = !monday.isJsonNull() && monday.getAsBoolean();
