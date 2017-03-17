@@ -1,29 +1,26 @@
-package edu.oswego.lakerparser;
+package edu.oswego.lakerparser.parser;
 
 
 import com.gargoylesoftware.htmlunit.*;
 import com.gargoylesoftware.htmlunit.html.DomElement;
+import com.gargoylesoftware.htmlunit.html.DomNode;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import edu.oswego.lakerparser.constants.EndPoints;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.logging.Level;
 
 public class LakerScrapper {
 
-    private String searchId = "s2id_autogen1_search";
-
-    private String ulId = "select2-results-1";
-    private String boxContainerId = "s2id_txt_term";
-
-    private String termString;
     private int termCode;
     private JsonArray terms = new JsonArray();
     private JsonArray subjects = new JsonArray();
@@ -31,6 +28,8 @@ public class LakerScrapper {
 
     private WebClient webClient;
     private HtmlPage currentPage;
+
+    private int queriesForCourses = 0;
 
     public LakerScrapper() throws IOException {
         webClient = new WebClient(BrowserVersion.FIREFOX_45);
@@ -66,8 +65,7 @@ public class LakerScrapper {
         return subjects;
     }
 
-    public void selectTerm(String termString, int termCode) throws URISyntaxException, IOException {
-        this.termString = termString;
+    public void selectTerm(int termCode) throws URISyntaxException, IOException {
         this.termCode = termCode;
         queryForSubjects();
         submitTermForm();
@@ -83,7 +81,6 @@ public class LakerScrapper {
         int page = 1;
         while (true) {
             WebResponse response = restRequest(EndPoints.getSubjectsEndpoint(termCode, page));
-//            System.out.println(response.getContentAsString());
             JsonArray array = new JsonParser().parse(response.getContentAsString()).getAsJsonArray();
             if (array != null && array.size() > 0) {
                 array.forEach(element -> {
@@ -101,9 +98,13 @@ public class LakerScrapper {
 
     private void queryForCourses() throws IOException {
         JsonArray subs = getSubjects();
+        queriesForCourses = 0;
         for (JsonElement temp : subs) {
             JsonObject subj = temp.getAsJsonObject();
-            queryCourses(subj.get("code").getAsString());
+            String subjCode = subj.get("code").getAsString();
+            System.out.println("Getting courses for subject:" + subjCode);
+            queryCourses(subjCode);
+            System.out.println("total queries so far: " + queriesForCourses);
         }
     }
 
@@ -130,6 +131,7 @@ public class LakerScrapper {
                 break;
             }
             page++;
+            queriesForCourses++;
         }
 
         coursesMap.values().forEach(this.courses::add);
@@ -150,7 +152,9 @@ public class LakerScrapper {
         webClient.waitForBackgroundJavaScriptStartingBefore(1000);
 
         if (ul.getChildElementCount() > 0) {
-            ul.getFirstElementChild().click();
+            DomElement termDiv = currentPage.getElementById(String.valueOf(termCode));
+            termDiv.click();
+            webClient.waitForBackgroundJavaScriptStartingBefore(1000);
             currentPage.getElementById("term-go").click();
         } else {
             throw new AssertionError("Nothing in select");
@@ -178,7 +182,6 @@ public class LakerScrapper {
     }
 
     private Page makeRequest(String endpoint) throws IOException {
-        System.out.println(endpoint);
         WebRequest request = new WebRequest(new URL(endpoint), HttpMethod.GET);
         Page responsePage = webClient.getPage(request);
         if(responsePage == null) {

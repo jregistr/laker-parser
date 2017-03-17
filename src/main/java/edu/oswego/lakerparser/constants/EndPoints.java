@@ -1,4 +1,4 @@
-package edu.oswego.lakerparser;
+package edu.oswego.lakerparser.constants;
 
 
 public class EndPoints {
