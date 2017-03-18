@@ -73,6 +73,7 @@ public class CourseDataParser {
                 course.addSection(section);
             });
 
+            out.add(course);
         });
         return out;
     }
@@ -118,7 +119,9 @@ public class CourseDataParser {
     }
 
     private Course parseCourse(JsonObject jsonObject) {
-        String name = jsonObject.get("subjectCourse").getAsString();
+//        String name = jsonObject.get("subjectCourse").getAsString();
+        String name = String.format("%s %s", jsonObject.get("subject").getAsString(),
+                jsonObject.get("courseNumber").getAsString());
         String crn = jsonObject.get("courseReferenceNumber").getAsString();
         JsonElement credits = jsonObject.get("creditHours");
         return new Course(name, crn, credits.isJsonNull() ? 3 : credits.getAsInt());
@@ -126,7 +129,7 @@ public class CourseDataParser {
 
     private Section parseSection(JsonObject jsonObject) {
         JsonArray faculty = jsonObject.get("faculty").getAsJsonArray();
-        String instructors = faculty.size() > 0 ? parseInstructors(faculty) : null;
+        String instructors = faculty.size() > 0 ? parseInstructors(faculty) : "none";
         List<Meeting> meeting = parseMeetings(jsonObject);
         return new Section(instructors, meeting);
     }
@@ -173,8 +176,8 @@ public class CourseDataParser {
             JsonElement friday = meeting.get("friday");
             JsonElement saturday = meeting.get("saturday");
 
-            Meeting temp = new Meeting(!start.isJsonNull() ? start.getAsString() : null,
-                    !end.isJsonNull() ? end.getAsString() : null, location);
+            Meeting temp = new Meeting(!start.isJsonNull() ? start.getAsString() : "0",
+                    !end.isJsonNull() ? end.getAsString() : "0", location);
 
             temp.sunday = !sunday.isJsonNull() && sunday.getAsBoolean();
             temp.monday = !monday.isJsonNull() && monday.getAsBoolean();

@@ -14,12 +14,13 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Scanner;
 
 public class Main {
 
-    public static void main(String[] args) throws IOException, URISyntaxException {
+    public static void main(String[] args) throws IOException, URISyntaxException, SQLException {
         Scanner scanner = new Scanner(System.in);
         System.out.println("Load data from file (yes) or from my-oswego (no)");
         String load = scanner.nextLine();
@@ -71,7 +72,9 @@ public class Main {
         System.out.println("All done gathering data!");
         System.out.println("Insert into db?");
 
-        if (yes(scanner.nextLine())) {
+        String insert = scanner.nextLine();
+
+        if (yes(insert)) {
             URL url = Main.class.getClassLoader().getResource(".credentials");
             if (url != null) {
                 JsonObject creds = new JsonParser().parse(new JsonReader(new FileReader(url.getFile()))).getAsJsonObject();
