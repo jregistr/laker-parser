@@ -66,7 +66,6 @@ public class Main {
             CoursesJsonWriter.writeToFile(parsedCourses, String.format("%s.parsed.json", String.valueOf(code)));
 
             allCourses = rawParser.getParsedCourses();
-
         }
 
         System.out.println("All done gathering data!");

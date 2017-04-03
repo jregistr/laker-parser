@@ -164,7 +164,6 @@ public class LakerScrapper {
 
     }
 
-
     private void resetForm() throws IOException {
         makeRequest(EndPoints.getResetEndpoint());
     }
