@@ -86,7 +86,7 @@ public class SqlMaker {
 
     private static void insertSection(Connection connection, long courseId, Section section) throws SQLException {
         PreparedStatement statement = connection.prepareStatement(
-                "INSERT INTO sections (class_id, instructors) VALUES (?, ?)",
+                "INSERT INTO sections (course_id, instructors) VALUES (?, ?)",
                 Statement.RETURN_GENERATED_KEYS
         );
 

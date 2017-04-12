@@ -176,8 +176,7 @@ public class CourseDataParser {
             JsonElement friday = meeting.get("friday");
             JsonElement saturday = meeting.get("saturday");
 
-            Meeting temp = new Meeting(!start.isJsonNull() ? start.getAsString() : "0",
-                    !end.isJsonNull() ? end.getAsString() : "0", location);
+            Meeting temp = new Meeting(convertTime(start), convertTime(end), location);
 
             temp.sunday = !sunday.isJsonNull() && sunday.getAsBoolean();
             temp.monday = !monday.isJsonNull() && monday.getAsBoolean();
@@ -190,6 +189,26 @@ public class CourseDataParser {
         });
 
         return meetings;
+    }
+
+    private static String convertTime(JsonElement element) {
+        String result = null;
+        if (!element.isJsonNull()) {
+            String rawTime = element.getAsString();
+            if (rawTime.length() == 4) {
+                String hoursString = rawTime.substring(0, 2);
+                String minutesString = rawTime.substring(2, rawTime.length());
+
+                result = String.valueOf(hoursString) +
+                        ":" +
+                        String.valueOf(minutesString);
+            } else if (rawTime.length() == 0) {
+                result = null;
+            } else {
+                throw new IllegalArgumentException("Unexpected length:" + rawTime.length() + ". String is:" + rawTime);
+            }
+        }
+        return result;
     }
 
 }
